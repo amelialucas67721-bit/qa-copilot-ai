@@ -29,16 +29,56 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
+function toOrigin(value?: string | null) {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+
+  const urlLike = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    return new URL(urlLike).origin;
+  } catch {
+    return trimmed.replace(/\/$/, '');
+  }
+}
+
+function withWwwVariant(origin: string) {
+  try {
+    const url = new URL(origin);
+    const host = url.hostname;
+    const isIpAddress = /^[\d.]+$/.test(host) || host.includes(':');
+
+    if (host === 'localhost' || isIpAddress || !host.includes('.')) {
+      return [origin];
+    }
+
+    const variant = new URL(url);
+    variant.hostname = host.startsWith('www.') ? host.slice(4) : `www.${host}`;
+    return [origin, variant.origin];
+  } catch {
+    return [origin];
+  }
+}
+
 // Origins we accept auth requests from. Include every URL the app may be
 // served under so better-auth's CSRF check doesn't reject legitimate requests
 // as "Invalid origin". The request's own origin + known sandbox / published
 // URLs + the mobile iframe proxy URL are all listed here.
-const trustedOrigins = [
+const configuredOrigins = [
   process.env.BETTER_AUTH_URL,
+  process.env.AUTH_URL,
+  process.env.NEXT_PUBLIC_APP_URL,
   process.env.EXPO_PUBLIC_PROXY_BASE_URL,
   process.env.NEXT_PUBLIC_CREATE_BASE_URL,
   process.env.NEXT_PUBLIC_CREATE_HOST ? `https://${process.env.NEXT_PUBLIC_CREATE_HOST}` : null,
-].filter((v): v is string => Boolean(v));
+  process.env.URL,
+  process.env.DEPLOY_URL,
+  process.env.DEPLOY_PRIME_URL,
+  ...(process.env.BETTER_AUTH_TRUSTED_ORIGINS?.split(',') ?? []),
+];
+
+const trustedOrigins = Array.from(
+  new Set(configuredOrigins.map(toOrigin).filter((v): v is string => Boolean(v)).flatMap(withWwwVariant))
+);
 
 // Social providers self-activate when the platform has injected their OAuth
 // credentials (set in project settings → Authentication, pushed in as env
