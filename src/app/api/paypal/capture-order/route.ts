@@ -4,8 +4,13 @@ import sql from '@/app/api/utils/sql';
 import { ensurePaymentOrdersTable } from '@/app/api/paypal/db';
 
 async function getPayPalAccessToken(): Promise<string> {
-  const clientId = process.env.PAYPAL_CLIENT_ID!;
-  const clientSecret = process.env.PAYPAL_CLIENT_SECRET!;
+  const clientId = process.env.PAYPAL_CLIENT_ID;
+  const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    throw new Error('PayPal sandbox app credentials are missing');
+  }
+
   const baseUrl =
     process.env.PAYPAL_MODE === 'live'
       ? 'https://api-m.paypal.com'
@@ -20,7 +25,10 @@ async function getPayPalAccessToken(): Promise<string> {
     body: 'grant_type=client_credentials',
   });
 
-  if (!res.ok) throw new Error('PayPal auth failed');
+  if (!res.ok) {
+    const err = await res.text().catch(() => '');
+    throw new Error(`PayPal auth failed: ${err.slice(0, 200)}`);
+  }
   const data = await res.json();
   return data.access_token;
 }
@@ -47,7 +55,15 @@ export async function POST(request: Request) {
       ? 'https://api-m.paypal.com'
       : 'https://api-m.sandbox.paypal.com';
 
-  const accessToken = await getPayPalAccessToken();
+  let accessToken: string;
+  try {
+    accessToken = await getPayPalAccessToken();
+  } catch (error) {
+    return Response.json(
+      { error: error instanceof Error ? error.message : 'PayPal authentication failed' },
+      { status: 503 }
+    );
+  }
 
   // Capture the payment
   const captureRes = await fetch(`${baseUrl}/v2/checkout/orders/${order_id}/capture`, {

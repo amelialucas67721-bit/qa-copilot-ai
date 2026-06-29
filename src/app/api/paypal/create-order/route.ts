@@ -3,9 +3,21 @@ import { auth } from '@/lib/auth';
 import sql from '@/app/api/utils/sql';
 import { ensurePaymentOrdersTable } from '@/app/api/paypal/db';
 
+const DEFAULT_SANDBOX_MERCHANT_ID = 'U4ZDWD2FJS956';
+
+function getPayPalMerchantId() {
+  const mode = process.env.PAYPAL_MODE === 'live' ? 'live' : 'sandbox';
+  return process.env.PAYPAL_MERCHANT_ID || (mode === 'sandbox' ? DEFAULT_SANDBOX_MERCHANT_ID : '');
+}
+
 async function getPayPalAccessToken(): Promise<string> {
-  const clientId = process.env.PAYPAL_CLIENT_ID!;
-  const clientSecret = process.env.PAYPAL_CLIENT_SECRET!;
+  const clientId = process.env.PAYPAL_CLIENT_ID;
+  const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    throw new Error('PayPal sandbox app credentials are missing');
+  }
+
   const baseUrl =
     process.env.PAYPAL_MODE === 'live'
       ? 'https://api-m.paypal.com'
@@ -46,6 +58,7 @@ export async function POST(request: Request) {
 
   const amount =
     billing_cycle === 'yearly' ? Number(plan.price_yearly) : Number(plan.price_monthly);
+  const merchantId = getPayPalMerchantId();
 
   if (amount <= 0) {
     return Response.json({ error: 'This plan is free — no payment required' }, { status: 400 });
@@ -56,7 +69,15 @@ export async function POST(request: Request) {
       ? 'https://api-m.paypal.com'
       : 'https://api-m.sandbox.paypal.com';
 
-  const accessToken = await getPayPalAccessToken();
+  let accessToken: string;
+  try {
+    accessToken = await getPayPalAccessToken();
+  } catch (error) {
+    return Response.json(
+      { error: error instanceof Error ? error.message : 'PayPal authentication failed' },
+      { status: 503 }
+    );
+  }
 
   const orderRes = await fetch(`${baseUrl}/v2/checkout/orders`, {
     method: 'POST',
@@ -69,6 +90,7 @@ export async function POST(request: Request) {
       purchase_units: [
         {
           description: `${plan.name} Plan (${billing_cycle})`,
+          ...(merchantId ? { payee: { merchant_id: merchantId } } : {}),
           amount: {
             currency_code: 'USD',
             value: amount.toFixed(2),
@@ -87,7 +109,10 @@ export async function POST(request: Request) {
   if (!orderRes.ok) {
     const err = await orderRes.text();
     console.error('[paypal] create order failed:', err.slice(0, 300));
-    return Response.json({ error: 'Failed to create PayPal order' }, { status: 502 });
+    return Response.json(
+      { error: `Failed to create PayPal order: ${err.slice(0, 200)}` },
+      { status: 502 }
+    );
   }
 
   const order = await orderRes.json();
