@@ -11,8 +11,7 @@ const nextConfig = {
     NEXT_PUBLIC_UPLOADCARE_PUBLIC_KEY: process.env.EXPO_PUBLIC_UPLOADCARE_PUBLIC_KEY || '',
   },
   serverExternalPackages: [
-    '@neondatabase/serverless',
-    'ws',
+    'pg',
     '@better-auth/kysely-adapter',
     'kysely',
   ],

@@ -15,19 +15,12 @@
  *           socialProviders block (the platform injects the OAuth credentials
  *           via env vars when a provider is enabled in project settings).
  */
-import { Pool, neonConfig } from '@neondatabase/serverless';
 import { argon2Verify } from 'argon2-wasm-edge';
 import { betterAuth } from 'better-auth';
 import { createAuthMiddleware } from 'better-auth/api';
 import { verifyPassword } from 'better-auth/crypto';
 import { bearer } from 'better-auth/plugins';
-import ws from 'ws';
-
-neonConfig.webSocketConstructor = ws;
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
+import { dbPool } from '@/lib/db';
 
 function toOrigin(value?: string | null) {
   const trimmed = value?.trim();
@@ -125,7 +118,7 @@ async function verifyCompatiblePassword({ hash, password }: { hash: string; pass
 }
 
 export const auth = betterAuth({
-  database: pool,
+  database: dbPool,
   trustedOrigins,
   socialProviders,
   emailAndPassword: {
