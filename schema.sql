@@ -351,9 +351,20 @@ CREATE TABLE IF NOT EXISTS defects (
 );
 
 CREATE INDEX IF NOT EXISTS idx_defects_project_id ON defects(project_id);
+CREATE INDEX IF NOT EXISTS idx_defects_assigned_to ON defects(assigned_to);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_defects_test_execution_id
   ON defects(test_execution_id)
   WHERE test_execution_id IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS defect_comments (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  defect_id UUID NOT NULL REFERENCES defects(id) ON DELETE CASCADE,
+  user_id TEXT REFERENCES "user"(id) ON DELETE SET NULL,
+  comment TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_defect_comments_defect_id ON defect_comments(defect_id);
 
 -- ============================================================
 -- SECURITY TESTING

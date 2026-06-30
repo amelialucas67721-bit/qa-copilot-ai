@@ -17,6 +17,100 @@ function safeParseJSON(raw: string) {
   return JSON.parse(text.trim());
 }
 
+type GeneratedTestCase = {
+  test_scenario: string;
+  preconditions?: string;
+  test_steps: string[];
+  test_data?: string | null;
+  expected_result: string;
+  priority?: string;
+  severity?: string;
+  test_type?: string;
+  automation_candidate?: boolean;
+};
+
+function isQuotaError(status: number, message: string) {
+  return status === 429 || /quota|rate limit|rate-limit|too many requests/i.test(message);
+}
+
+function fallbackTestCases(feature: { name: string; description?: string | null }): GeneratedTestCase[] {
+  const featureName = feature.name || 'Feature';
+  const description = feature.description || `Validate ${featureName}.`;
+
+  return [
+    {
+      test_scenario: `Verify ${featureName} works for a valid user flow`,
+      preconditions: 'User is on the relevant page and required test data is available.',
+      test_steps: [
+        `Open the page containing ${featureName}.`,
+        'Enter valid input where required.',
+        'Complete the main user action.',
+      ],
+      test_data: description,
+      expected_result: `${featureName} completes successfully and displays the expected confirmation or result.`,
+      priority: 'high',
+      severity: 'major',
+      test_type: 'functional',
+      automation_candidate: true,
+    },
+    {
+      test_scenario: `Verify ${featureName} validation for missing required input`,
+      preconditions: 'User is on the relevant page.',
+      test_steps: [
+        `Open the page containing ${featureName}.`,
+        'Leave required fields empty.',
+        'Submit or continue the flow.',
+      ],
+      expected_result: 'Validation messages are shown and the user cannot continue with invalid data.',
+      priority: 'medium',
+      severity: 'moderate',
+      test_type: 'validation',
+      automation_candidate: true,
+    },
+    {
+      test_scenario: `Verify ${featureName} handles invalid input gracefully`,
+      preconditions: 'User is on the relevant page.',
+      test_steps: [
+        `Open the page containing ${featureName}.`,
+        'Enter invalid or unexpected values.',
+        'Submit or continue the flow.',
+      ],
+      expected_result: 'The system prevents invalid submission and shows a clear error message.',
+      priority: 'medium',
+      severity: 'moderate',
+      test_type: 'negative',
+      automation_candidate: true,
+    },
+    {
+      test_scenario: `Verify ${featureName} UI labels and controls are visible`,
+      preconditions: 'User can access the relevant page.',
+      test_steps: [
+        `Open the page containing ${featureName}.`,
+        'Review visible labels, buttons, links, and input controls.',
+      ],
+      expected_result: 'All required UI elements are visible, readable, and aligned with the requirement.',
+      priority: 'medium',
+      severity: 'minor',
+      test_type: 'ui',
+      automation_candidate: false,
+    },
+    {
+      test_scenario: `Verify ${featureName} at boundary conditions`,
+      preconditions: 'User is on the relevant page.',
+      test_steps: [
+        `Open the page containing ${featureName}.`,
+        'Use minimum and maximum accepted values where applicable.',
+        'Complete the action.',
+      ],
+      expected_result: 'Boundary values are handled correctly without errors or data loss.',
+      priority: 'medium',
+      severity: 'moderate',
+      test_type: 'boundary',
+      automation_candidate: true,
+    },
+  ];
+}
+
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({ headers: await headers() });
@@ -57,13 +151,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     // Start counter after the highest existing TC number to avoid unique constraint conflicts
     const maxIdRow = await sql`
-      SELECT test_case_id FROM test_cases ORDER BY created_at DESC LIMIT 1
+      SELECT COALESCE(MAX((regexp_match(test_case_id, '^TC-(\\d+)$'))[1]::int), 0) AS max_number
+      FROM test_cases
+      WHERE test_case_id ~ '^TC-\\d+$'
     `;
-    let counter = 1;
-    if (maxIdRow.length > 0) {
-      const match = maxIdRow[0].test_case_id.match(/TC-(\d+)/);
-      if (match) counter = parseInt(match[1], 10) + 1;
-    }
+    let counter = Number(maxIdRow[0]?.max_number || 0) + 1;
 
     const integrationUrl = getAIIntegrationUrl();
 
@@ -111,35 +203,32 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
               aiResponse.status,
               errText.slice(0, 300)
             );
-            continue;
+
+            if (!isQuotaError(aiResponse.status, errText)) {
+              continue;
+            }
           }
 
-          const aiData = await aiResponse.json();
-          const rawContent: string = aiData.choices[0].message.content;
+          let generatedTests: GeneratedTestCase[] = [];
 
-          let parsed;
-          try {
-            parsed = safeParseJSON(rawContent);
-          } catch {
-            console.error(
-              '[generate-tests] Parse failed for feature:',
-              feature.name,
-              rawContent.slice(0, 200)
-            );
-            continue;
+          if (aiResponse.ok) {
+            const aiData = await aiResponse.json();
+            const rawContent: string = aiData.choices[0].message.content;
+
+            try {
+              const parsed = safeParseJSON(rawContent);
+              generatedTests = parsed.test_cases || [];
+            } catch {
+              console.error(
+                '[generate-tests] Parse failed for feature:',
+                feature.name,
+                rawContent.slice(0, 200)
+              );
+              continue;
+            }
+          } else {
+            generatedTests = fallbackTestCases(feature);
           }
-
-          const generatedTests: {
-            test_scenario: string;
-            preconditions?: string;
-            test_steps: string[];
-            test_data?: string;
-            expected_result: string;
-            priority?: string;
-            severity?: string;
-            test_type?: string;
-            automation_candidate?: boolean;
-          }[] = parsed.test_cases || [];
 
           for (const tc of generatedTests) {
             const testCaseId = `TC-${String(counter++).padStart(4, '0')}`;

@@ -1,7 +1,8 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   Sparkles,
   LayoutDashboard,
@@ -17,6 +18,7 @@ import {
   CreditCard,
   Sun,
   Moon,
+  UserPlus,
 } from 'lucide-react';
 import { useTheme } from '@/components/ThemeProvider';
 
@@ -32,9 +34,10 @@ interface DashboardNavProps {
 
 export default function DashboardNav({ user }: DashboardNavProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { theme, toggle } = useTheme();
 
-  const navItems = [
+  const allNavItems = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, exact: true },
     { href: '/dashboard/projects', label: 'Projects', icon: FileText, exact: false },
     { href: '/dashboard/test-cases', label: 'Test Cases', icon: TestTube2, exact: false },
@@ -43,7 +46,18 @@ export default function DashboardNav({ user }: DashboardNavProps) {
     { href: '/dashboard/security', label: 'Security Testing', icon: ShieldCheck, exact: false },
     { href: '/dashboard/reports', label: 'Reports', icon: BarChart3, exact: false },
     { href: '/dashboard/billing', label: 'Billing', icon: CreditCard, exact: false },
+    { href: '/dashboard/developers', label: 'Add Developers', icon: UserPlus, exact: false },
   ];
+  const navItems =
+    user.role === 'developer'
+      ? [{ href: '/dashboard/defects', label: 'Defects', icon: Bug, exact: false }]
+      : allNavItems;
+
+  useEffect(() => {
+    if (user.role === 'developer' && !pathname.startsWith('/dashboard/defects')) {
+      router.replace('/dashboard/defects');
+    }
+  }, [pathname, router, user.role]);
 
   const isActive = (item: { href: string; exact: boolean }) =>
     item.exact ? pathname === item.href : pathname.startsWith(item.href);

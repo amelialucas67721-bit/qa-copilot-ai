@@ -13,6 +13,92 @@ function safeParseJSON(raw: string) {
   return JSON.parse(text);
 }
 
+type RequirementAnalysis = {
+  summary: string;
+  modules: {
+    name: string;
+    description: string;
+    pages: {
+      name: string;
+      description: string;
+      features: { name: string; description: string; priority: string }[];
+    }[];
+  }[];
+  user_flows: { name: string; description: string; steps: string[] }[];
+  fallback?: boolean;
+};
+
+function titleCase(value: string) {
+  return value
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function extractUrlPath(content: string) {
+  const match = content.match(/https?:\/\/[^\s]+/i);
+  if (!match) return '';
+
+  try {
+    return new URL(match[0]).pathname.replace(/^\/+/, '');
+  } catch {
+    return '';
+  }
+}
+
+function fallbackAnalyzeRequirement(req: {
+  title: string;
+  content: string;
+  requirement_type?: string | null;
+}): RequirementAnalysis {
+  const lines = req.content
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const steps = lines.length > 0 ? lines : [req.title];
+  const urlPath = extractUrlPath(req.content);
+  const pageName = titleCase(urlPath.split('/').filter(Boolean).pop() || req.title || 'Requirement');
+  const featureName = titleCase(req.title || 'Requirement Flow');
+
+  return {
+    fallback: true,
+    summary:
+      `Fallback analysis generated because the AI quota is currently unavailable. ` +
+      `The requirement describes ${featureName} and the expected user flow around ${pageName}.`,
+    modules: [
+      {
+        name: `${pageName} Module`,
+        description: `Covers ${req.requirement_type || 'functional'} behavior for ${pageName}.`,
+        pages: [
+          {
+            name: pageName,
+            description: `Page or area involved in the ${featureName} requirement.`,
+            features: [
+              {
+                name: featureName,
+                description: steps.join(' '),
+                priority: 'high',
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    user_flows: [
+      {
+        name: `${featureName} Flow`,
+        description: `User completes the ${featureName} flow successfully.`,
+        steps,
+      },
+    ],
+  };
+}
+
+function isQuotaError(status: number, message: string) {
+  return status === 429 || /quota|rate limit|rate-limit|too many requests/i.test(message);
+}
+
 async function readAIError(response: Response): Promise<string> {
   const text = await response.text().catch(() => '');
   if (!text.trim()) return `AI service returned ${response.status}`;
@@ -91,32 +177,35 @@ Return ONLY a valid JSON object with NO markdown, NO code fences. Use exactly th
       }),
     });
 
+    let analysis: RequirementAnalysis;
+
     if (!aiResponse.ok) {
       const errMessage = await readAIError(aiResponse);
       console.error('[analyze] AI error status:', aiResponse.status, errMessage);
-      return Response.json(
-        { error: errMessage },
-        { status: 502 }
-      );
-    }
 
-    let aiData;
-    try {
-      aiData = await aiResponse.json();
-    } catch {
-      return Response.json({ error: 'AI returned a non-JSON response' }, { status: 502 });
-    }
-    const rawContent: string = aiData.choices[0].message.content;
+      if (!isQuotaError(aiResponse.status, errMessage)) {
+        return Response.json({ error: errMessage }, { status: 502 });
+      }
 
-    let analysis;
-    try {
-      analysis = safeParseJSON(rawContent);
-    } catch {
-      console.error('[analyze] JSON parse failed. Raw:', rawContent.slice(0, 500));
-      return Response.json(
-        { error: 'AI returned an unexpected format — please try again.' },
-        { status: 502 }
-      );
+      analysis = fallbackAnalyzeRequirement(req);
+    } else {
+      let aiData;
+      try {
+        aiData = await aiResponse.json();
+      } catch {
+        return Response.json({ error: 'AI returned a non-JSON response' }, { status: 502 });
+      }
+      const rawContent: string = aiData.choices[0].message.content;
+
+      try {
+        analysis = safeParseJSON(rawContent);
+      } catch {
+        console.error('[analyze] JSON parse failed. Raw:', rawContent.slice(0, 500));
+        return Response.json(
+          { error: 'AI returned an unexpected format — please try again.' },
+          { status: 502 }
+        );
+      }
     }
 
     await sql`
@@ -136,6 +225,8 @@ Return ONLY a valid JSON object with NO markdown, NO code fences. Use exactly th
           updated_at  = NOW()
       WHERE id = ${id}
     `;
+
+    await sql`DELETE FROM modules WHERE requirement_id = ${id}`;
 
     for (const module of analysis.modules || []) {
       const modRow = await sql`

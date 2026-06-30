@@ -20,6 +20,7 @@ import {
   Sparkles,
   Eye,
   Play,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -189,6 +190,10 @@ export default function TestRunDetailPage() {
     }
   };
 
+  const closeAutomationModal = () => {
+    setShowAutoModal(false);
+  };
+
   // Step 1 → 2: Analyse the page
   const handleAnalysePage = async () => {
     if (!automationUrl.trim()) {
@@ -292,17 +297,24 @@ export default function TestRunDetailPage() {
       {/* ── Automation Wizard Modal ─────────────────────────── */}
       {showAutoModal && (
         <div
-          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-          onClick={() => {
-            if (autoStep !== 'analysing') setShowAutoModal(false);
-          }}
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-hidden"
+          onClick={closeAutomationModal}
         >
           <div
-            className="bg-white rounded-2xl border border-gray-200 w-full max-w-lg shadow-2xl overflow-hidden"
+            className="relative bg-white rounded-2xl border border-gray-200 w-full max-w-lg max-h-[90vh] shadow-2xl overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
+            <button
+              type="button"
+              onClick={closeAutomationModal}
+              className="absolute right-3 top-3 z-10 rounded-full p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              aria-label="Close automation popup"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
             {/* Step indicator */}
-            <div className="flex border-b border-gray-100">
+            <div className="flex border-b border-gray-100 flex-shrink-0 pr-10">
               {[
                 { step: 'url', label: '1. Enter URL' },
                 { step: 'analysing', label: '2. Analyse' },
@@ -324,7 +336,7 @@ export default function TestRunDetailPage() {
               })}
             </div>
 
-            <div className="p-6">
+            <div className="p-6 overflow-y-auto flex-1 min-h-0">
               {/* STEP 1: Enter URL */}
               {autoStep === 'url' && (
                 <div className="space-y-4">
@@ -443,7 +455,7 @@ export default function TestRunDetailPage() {
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-3 max-h-[38vh] overflow-y-auto pr-1">
                       <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
                         Enter test data below
                       </p>

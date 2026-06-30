@@ -3,8 +3,34 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Bug, Plus, Search, AlertTriangle, CheckCircle, Clock, XCircle } from 'lucide-react';
+import {
+  Bug,
+  Plus,
+  Search,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  XCircle,
+  MessageSquare,
+  Send,
+  UserRound,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+interface Assignee {
+  id: string;
+  name: string;
+  email: string;
+  role?: string | null;
+}
+
+interface DefectComment {
+  id: string;
+  comment: string;
+  created_at: string;
+  user_name?: string | null;
+  user_email?: string | null;
+}
 
 interface Defect {
   id: string;
@@ -17,6 +43,11 @@ interface Defect {
   root_cause_suggestion: string;
   project_name: string;
   project_id: string;
+  assigned_to?: string | null;
+  assigned_to_name?: string | null;
+  assigned_to_email?: string | null;
+  comment_count?: number;
+  latest_comments?: DefectComment[];
   created_at: string;
 }
 
@@ -73,7 +104,9 @@ export default function DefectsPage() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterSeverity, setFilterSeverity] = useState('');
+  const [filterAssignee, setFilterAssignee] = useState('');
   const [showNew, setShowNew] = useState(false);
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
   const [newDefect, setNewDefect] = useState({
     project_id: '',
     title: '',
@@ -90,9 +123,10 @@ export default function DefectsPage() {
   if (search) params.set('search', search);
   if (filterStatus) params.set('status', filterStatus);
   if (filterSeverity) params.set('severity', filterSeverity);
+  if (filterAssignee) params.set('assigned_to', filterAssignee);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['defects', search, filterStatus, filterSeverity],
+    queryKey: ['defects', search, filterStatus, filterSeverity, filterAssignee],
     queryFn: async () => {
       const res = await fetch(`/api/defects?${params.toString()}`);
       if (!res.ok) throw new Error('Failed');
@@ -138,12 +172,22 @@ export default function DefectsPage() {
     onError: () => toast.error('Failed to create defect'),
   });
 
-  const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+  const updateDefectMutation = useMutation({
+    mutationFn: async ({
+      id,
+      status,
+      assigned_to,
+      comment,
+    }: {
+      id: string;
+      status?: string;
+      assigned_to?: string | null;
+      comment?: string;
+    }) => {
       const res = await fetch(`/api/defects/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, assigned_to, comment }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -151,8 +195,11 @@ export default function DefectsPage() {
       }
       return res.json();
     },
-    onSuccess: () => {
-      toast.success('Defect status updated');
+    onSuccess: (_data, variables) => {
+      toast.success(variables.comment ? 'Comment added' : 'Defect updated');
+      if (variables.comment) {
+        setCommentDrafts((drafts) => ({ ...drafts, [variables.id]: '' }));
+      }
       queryClient.invalidateQueries({ queryKey: ['defects'] });
     },
     onError: (error) => {
@@ -161,6 +208,8 @@ export default function DefectsPage() {
   });
 
   const defects: Defect[] = data?.defects || [];
+  const assignees: Assignee[] = data?.assignees || [];
+  const isDeveloper = data?.currentUserRole === 'developer';
 
   const statusCounts = defects.reduce((acc: Record<string, number>, d) => {
     acc[d.status] = (acc[d.status] || 0) + 1;
@@ -174,12 +223,14 @@ export default function DefectsPage() {
           <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Defects</h1>
           <p className="text-sm text-gray-500 mt-1">{defects.length} total defects</p>
         </div>
-        <Button
-          className="bg-blue-600 hover:bg-blue-700 text-white text-sm flex items-center gap-2"
-          onClick={() => setShowNew(true)}
-        >
-          <Plus className="w-4 h-4" /> Report Defect
-        </Button>
+        {!isDeveloper && (
+          <Button
+            className="bg-blue-600 hover:bg-blue-700 text-white text-sm flex items-center gap-2"
+            onClick={() => setShowNew(true)}
+          >
+            <Plus className="w-4 h-4" /> Report Defect
+          </Button>
+        )}
       </div>
 
       {/* Status summary */}
@@ -214,6 +265,21 @@ export default function DefectsPage() {
             />
           </div>
           <div className="flex gap-2">
+            {!isDeveloper && (
+              <select
+                value={filterAssignee}
+                onChange={(e) => setFilterAssignee(e.target.value)}
+                className="text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-blue-500 bg-white"
+              >
+                <option value="">All Developers</option>
+                <option value="unassigned">Unassigned</option>
+                {assignees.map((assignee) => (
+                  <option key={assignee.id} value={assignee.id}>
+                    {assignee.name || assignee.email}
+                  </option>
+                ))}
+              </select>
+            )}
             <select
               value={filterSeverity}
               onChange={(e) => setFilterSeverity(e.target.value)}
@@ -226,12 +292,13 @@ export default function DefectsPage() {
                 </option>
               ))}
             </select>
-            {(search || filterStatus || filterSeverity) && (
+            {(search || filterStatus || filterSeverity || filterAssignee) && (
               <button
                 onClick={() => {
                   setSearch('');
                   setFilterStatus('');
                   setFilterSeverity('');
+                  setFilterAssignee('');
                 }}
                 className="text-sm text-gray-500 hover:text-gray-700 px-2"
               >
@@ -409,12 +476,14 @@ export default function DefectsPage() {
             <p className="text-sm text-gray-500 mb-4">
               Defects will appear here when tests fail, or you can report them manually.
             </p>
-            <Button
-              className="bg-blue-600 hover:bg-blue-700 text-white text-sm"
-              onClick={() => setShowNew(true)}
-            >
-              Report First Defect
-            </Button>
+            {!isDeveloper && (
+              <Button
+                className="bg-blue-600 hover:bg-blue-700 text-white text-sm"
+                onClick={() => setShowNew(true)}
+              >
+                Report First Defect
+              </Button>
+            )}
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
@@ -440,12 +509,52 @@ export default function DefectsPage() {
                       </div>
                       <h3 className="text-sm font-semibold text-gray-900 mb-1">{d.title}</h3>
                       <p className="text-xs text-gray-500 line-clamp-2">{d.description}</p>
+                      <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
+                        <UserRound className="w-3.5 h-3.5 text-gray-400" />
+                        <span>
+                          Assigned to:{' '}
+                          <span className="font-medium text-gray-700">
+                            {d.assigned_to_name || d.assigned_to_email || 'Unassigned'}
+                          </span>
+                        </span>
+                      </div>
                       {d.root_cause_suggestion && (
                         <div className="mt-2 bg-blue-50 border border-blue-100 rounded-lg px-3 py-1.5">
                           <p className="text-xs text-blue-700">
                             <span className="font-semibold">AI Suggestion: </span>
                             {d.root_cause_suggestion}
                           </p>
+                        </div>
+                      )}
+                      {(d.latest_comments?.length || 0) > 0 && (
+                        <div className="mt-3 space-y-2">
+                          <div className="flex items-center gap-1 text-xs font-medium text-gray-500">
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            Latest comments
+                            {Number(d.comment_count || 0) > d.latest_comments!.length && (
+                              <span className="font-normal">
+                                ({d.latest_comments!.length} of {d.comment_count})
+                              </span>
+                            )}
+                          </div>
+                          {d.latest_comments!.map((comment) => (
+                            <div
+                              key={comment.id}
+                              className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2"
+                            >
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <span className="text-xs font-medium text-gray-700">
+                                  {comment.user_name || comment.user_email || 'User'}
+                                </span>
+                                <span className="text-[11px] text-gray-400">
+                                  <ClientDate iso={comment.created_at} />
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-600 whitespace-pre-wrap">
+                                {comment.comment}
+                              </p>
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>
@@ -455,9 +564,9 @@ export default function DefectsPage() {
                       </div>
                       <select
                         value={d.status}
-                        disabled={updateStatusMutation.isPending}
+                        disabled={updateDefectMutation.isPending}
                         onChange={(e) =>
-                          updateStatusMutation.mutate({ id: d.id, status: e.target.value })
+                          updateDefectMutation.mutate({ id: d.id, status: e.target.value })
                         }
                         className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white text-gray-700 outline-none focus:border-blue-500"
                       >
@@ -467,6 +576,54 @@ export default function DefectsPage() {
                           </option>
                         ))}
                       </select>
+                      {!isDeveloper && (
+                        <select
+                          value={d.assigned_to || ''}
+                          disabled={updateDefectMutation.isPending}
+                          onChange={(e) =>
+                            updateDefectMutation.mutate({
+                              id: d.id,
+                              assigned_to: e.target.value || null,
+                            })
+                          }
+                          className="w-44 text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white text-gray-700 outline-none focus:border-blue-500"
+                        >
+                          <option value="">Assign developer...</option>
+                          {assignees.map((assignee) => (
+                            <option key={assignee.id} value={assignee.id}>
+                              {assignee.name || assignee.email}
+                              {assignee.role ? ` (${assignee.role})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                      <div className="w-56 space-y-1">
+                        <textarea
+                          rows={2}
+                          value={commentDrafts[d.id] || ''}
+                          disabled={updateDefectMutation.isPending}
+                          onChange={(e) =>
+                            setCommentDrafts((drafts) => ({ ...drafts, [d.id]: e.target.value }))
+                          }
+                          placeholder="Add comment..."
+                          className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white text-gray-700 outline-none focus:border-blue-500 resize-none"
+                        />
+                        <Button
+                          size="sm"
+                          className="w-full h-8 bg-gray-900 hover:bg-gray-800 text-white text-xs flex items-center justify-center gap-1"
+                          disabled={
+                            updateDefectMutation.isPending || !(commentDrafts[d.id] || '').trim()
+                          }
+                          onClick={() =>
+                            updateDefectMutation.mutate({
+                              id: d.id,
+                              comment: (commentDrafts[d.id] || '').trim(),
+                            })
+                          }
+                        >
+                          <Send className="w-3 h-3" /> Add Comment
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
