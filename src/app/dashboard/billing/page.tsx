@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CreditCard, CheckCircle, Star, Receipt, Crown, Zap, ArrowRight } from 'lucide-react';
+import PayPalCheckout from '@/components/PayPalCheckout';
 
 const PLAN_ICONS: Record<string, React.ReactNode> = {
   free: <Zap className="w-5 h-5 text-gray-500" />,
@@ -88,6 +89,23 @@ function PaymentRow({ payment }: { payment: PaymentRecord }) {
 
 export default function BillingPage() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+  const [paymentNotice, setPaymentNotice] = useState<{
+    type: 'success' | 'error';
+    msg: string;
+  } | null>(null);
+  const qc = useQueryClient();
+
+  const handlePaymentSuccess = useCallback(() => {
+    setPaymentNotice({
+      type: 'success',
+      msg: 'Payment successful. Your plan has been upgraded.',
+    });
+    qc.invalidateQueries({ queryKey: ['billing'] });
+  }, [qc]);
+
+  const handlePaymentError = useCallback((msg: string) => {
+    setPaymentNotice({ type: 'error', msg });
+  }, []);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['billing'],
@@ -133,6 +151,18 @@ export default function BillingPage() {
       )}
 
       {/* Billing Cycle Toggle */}
+      {paymentNotice && (
+        <div
+          className={`rounded-xl px-4 py-3 text-sm ${
+            paymentNotice.type === 'success'
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              : 'bg-rose-50 text-rose-700 border border-rose-200'
+          }`}
+        >
+          {paymentNotice.msg}
+        </div>
+      )}
+
       <div className="flex items-center justify-center gap-1 bg-gray-100 rounded-xl p-1 w-fit mx-auto">
         {(['monthly', 'yearly'] as const).map((c) => (
           <button
@@ -253,14 +283,26 @@ export default function BillingPage() {
                     <div className="w-full py-2.5 rounded-xl text-sm font-bold text-center bg-gray-50 text-gray-400">
                       Free Forever
                     </div>
-                  ) : (
+                  ) : isEnterprise ? (
                     <a
                       href="mailto:sales@qacopilot.ai"
                       className={`w-full py-2.5 rounded-xl text-sm font-bold text-center text-white inline-flex items-center justify-center gap-2 transition-colors ${c.btn}`}
                     >
-                      {isEnterprise ? 'Contact Sales' : `Upgrade to ${plan.name}`}
+                      Contact Sales
                       <ArrowRight className="w-3.5 h-3.5" />
                     </a>
+                  ) : (
+                    <div className="space-y-2">
+                      <PayPalCheckout
+                        planId={plan.id}
+                        billingCycle={billingCycle}
+                        onSuccess={handlePaymentSuccess}
+                        onError={handlePaymentError}
+                      />
+                      <p className="text-[10px] text-center text-gray-400">
+                        Pay with PayPal · ${price}/{billingCycle === 'yearly' ? 'yr' : 'mo'}
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>

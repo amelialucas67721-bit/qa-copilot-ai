@@ -44,12 +44,8 @@ export default function AdminSetupPage() {
 
         <div className="bg-white/[0.04] border border-white/10 rounded-2xl p-7">
           <p className="text-sm text-white/50 mb-6 leading-relaxed">
-            Enter the admin setup key to grant your currently logged-in account admin access. The
-            setup key is{' '}
-            <code className="bg-white/10 text-white/80 px-1.5 py-0.5 rounded text-xs font-mono">
-              Ammar@5627905
-            </code>
-            .
+            Enter the admin setup key to grant your currently logged-in account admin access. Contact
+            your system administrator if you do not have the key.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">

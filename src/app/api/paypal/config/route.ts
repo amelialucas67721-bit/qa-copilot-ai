@@ -1,13 +1,10 @@
 // Returns PayPal configuration status to the frontend
-const DEFAULT_SANDBOX_MERCHANT_ID = 'U4ZDWD2FJS956';
-
 export async function GET() {
   const clientId = process.env.PAYPAL_CLIENT_ID || '';
   const clientSecret = process.env.PAYPAL_CLIENT_SECRET || '';
   const publicClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || clientId;
   const mode = process.env.PAYPAL_MODE === 'live' ? 'live' : 'sandbox';
-  const merchantId =
-    process.env.PAYPAL_MERCHANT_ID || (mode === 'sandbox' ? DEFAULT_SANDBOX_MERCHANT_ID : '');
+  const merchantId = process.env.PAYPAL_MERCHANT_ID?.trim() || '';
   const configured = !!(clientId && clientSecret);
 
   return Response.json({

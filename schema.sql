@@ -367,6 +367,23 @@ CREATE TABLE IF NOT EXISTS defect_comments (
 CREATE INDEX IF NOT EXISTS idx_defect_comments_defect_id ON defect_comments(defect_id);
 
 -- ============================================================
+-- SITE SETTINGS (admin-editable content)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS site_settings (
+  key TEXT PRIMARY KEY,
+  value JSONB NOT NULL DEFAULT '{}',
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS site_pages (
+  slug TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL DEFAULT '',
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
 -- SECURITY TESTING
 -- ============================================================
 

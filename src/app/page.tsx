@@ -10,8 +10,11 @@ import {
   Shield,
   CheckCircle,
 } from 'lucide-react';
+import { getFooterContent } from '@/lib/footer';
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const footer = await getFooterContent();
+
   return (
     <div className="min-h-screen bg-[#09090b] text-white">
       {/* Header */}
@@ -354,27 +357,28 @@ export default function LandingPage() {
       <footer className="border-t border-white/5">
         <div className="max-w-7xl mx-auto px-6 py-14">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-12">
-            {[
-              { title: 'Product', links: ['Features', 'Pricing', 'Integrations'] },
-              { title: 'Resources', links: ['Documentation', 'API Reference', 'Guides'] },
-              { title: 'Company', links: ['About', 'Blog', 'Careers'] },
-              { title: 'Legal', links: ['Privacy', 'Terms', 'Security'] },
-            ].map((col) => (
+            {footer.columns.map((col) => (
               <div key={col.title}>
                 <h4 className="text-xs font-bold text-white/30 uppercase tracking-widest mb-5">
                   {col.title}
                 </h4>
                 <ul className="space-y-3">
-                  {col.links.map((l) => (
-                    <li key={l}>
+                  {col.links.map((link) => {
+                    const href =
+                      link.pageSlug && (!link.href || link.href === '#')
+                        ? `/p/${link.pageSlug}`
+                        : link.href || '#';
+                    return (
+                    <li key={`${col.title}-${link.label}`}>
                       <Link
-                        href="#"
+                        href={href}
                         className="text-sm text-white/50 hover:text-white transition-colors"
                       >
-                        {l}
+                        {link.label}
                       </Link>
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
               </div>
             ))}
@@ -384,9 +388,9 @@ export default function LandingPage() {
               <div className="w-6 h-6 bg-violet-600 rounded-md flex items-center justify-center">
                 <Sparkles className="w-3.5 h-3.5 text-white" />
               </div>
-              <span className="text-sm font-semibold text-white/60">QA Copilot AI</span>
+              <span className="text-sm font-semibold text-white/60">{footer.brandName}</span>
             </div>
-            <p className="text-sm text-white/25">© 2025 QA Copilot AI. All rights reserved.</p>
+            <p className="text-sm text-white/25">{footer.copyright}</p>
           </div>
         </div>
       </footer>

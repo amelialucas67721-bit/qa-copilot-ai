@@ -11,6 +11,7 @@ import {
   ChevronRight,
   BarChart3,
   ExternalLink,
+  LayoutTemplate,
 } from 'lucide-react';
 
 interface AdminNavProps {
@@ -30,6 +31,7 @@ export default function AdminNav({ user }: AdminNavProps) {
     { href: '/admin/customers', label: 'Customers', icon: Users, exact: false },
     { href: '/admin/plans', label: 'Pricing Plans', icon: CreditCard, exact: false },
     { href: '/admin/reports', label: 'Reports', icon: BarChart3, exact: false },
+    { href: '/admin/footer', label: 'Footer', icon: LayoutTemplate, exact: false },
   ];
 
   const isActive = (item: { href: string; exact: boolean }) =>

@@ -3,11 +3,8 @@ import { auth } from '@/lib/auth';
 import sql from '@/app/api/utils/sql';
 import { ensurePaymentOrdersTable } from '@/app/api/paypal/db';
 
-const DEFAULT_SANDBOX_MERCHANT_ID = 'U4ZDWD2FJS956';
-
 function getPayPalMerchantId() {
-  const mode = process.env.PAYPAL_MODE === 'live' ? 'live' : 'sandbox';
-  return process.env.PAYPAL_MERCHANT_ID || (mode === 'sandbox' ? DEFAULT_SANDBOX_MERCHANT_ID : '');
+  return process.env.PAYPAL_MERCHANT_ID?.trim() || '';
 }
 
 async function getPayPalAccessToken(): Promise<string> {
