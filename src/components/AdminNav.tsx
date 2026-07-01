@@ -12,6 +12,7 @@ import {
   BarChart3,
   ExternalLink,
   LayoutTemplate,
+  Home,
 } from 'lucide-react';
 
 interface AdminNavProps {
@@ -30,6 +31,7 @@ export default function AdminNav({ user }: AdminNavProps) {
     { href: '/admin', label: 'Overview', icon: LayoutDashboard, exact: true },
     { href: '/admin/customers', label: 'Customers', icon: Users, exact: false },
     { href: '/admin/plans', label: 'Pricing Plans', icon: CreditCard, exact: false },
+    { href: '/admin/homepage', label: 'Homepage', icon: Home, exact: false },
     { href: '/admin/reports', label: 'Reports', icon: BarChart3, exact: false },
     { href: '/admin/footer', label: 'Footer', icon: LayoutTemplate, exact: false },
   ];

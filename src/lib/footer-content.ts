@@ -24,7 +24,7 @@ export const DEFAULT_FOOTER_CONTENT: FooterContent = {
       title: 'Product',
       links: [
         linkWithSlug('Features', 'features'),
-        linkWithSlug('Pricing', 'pricing'),
+        { label: 'Pricing', href: '/#pricing' },
         linkWithSlug('Integrations', 'integrations'),
       ],
     },
