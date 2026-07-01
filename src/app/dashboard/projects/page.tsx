@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, FileText, TestTube2, Play, Bug, MoreVertical } from 'lucide-react';
+import { NewProjectButton, ProjectUsageBanner } from '@/components/ProjectPlanUsage';
+import { type ProjectUsage } from '@/lib/plan-limits';
+import { Search, FileText, TestTube2, MoreVertical } from 'lucide-react';
 
 interface Project {
   id: string;
@@ -18,6 +19,7 @@ interface Project {
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [usage, setUsage] = useState<ProjectUsage | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
@@ -30,6 +32,7 @@ export default function ProjectsPage() {
       }
       const data = await response.json();
       setProjects(data.projects || []);
+      setUsage(data.usage || null);
     } catch (error) {
       console.error('Error fetching projects:', error);
     } finally {
@@ -49,13 +52,10 @@ export default function ProjectsPage() {
           <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Projects</h1>
           <p className="text-sm text-gray-500 mt-1">Manage your QA projects and test suites</p>
         </div>
-        <Link href="/dashboard/projects/new">
-          <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-2 text-sm font-medium inline-flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            New Project
-          </Button>
-        </Link>
+        <NewProjectButton usage={usage} />
       </div>
+
+      <ProjectUsageBanner usage={usage} />
 
       {/* Search */}
       <div className="relative">
@@ -92,11 +92,7 @@ export default function ProjectsPage() {
           <p className="text-sm text-gray-500 mb-6">
             Create your first project to start generating test cases
           </p>
-          <Link href="/dashboard/projects/new">
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-2 text-sm font-medium">
-              Create Project
-            </Button>
-          </Link>
+          <NewProjectButton usage={usage} label="Create Project" />
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

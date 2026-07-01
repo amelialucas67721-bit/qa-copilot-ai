@@ -1,5 +1,6 @@
 import sql from '@/app/api/utils/sql';
 import { auth } from '@/lib/auth';
+import { getUserProjectUsage, projectLimitErrorMessage } from '@/lib/plan-limits';
 import { headers } from 'next/headers';
 
 export async function GET(request: Request) {
@@ -36,8 +37,9 @@ export async function GET(request: Request) {
     query += ` GROUP BY p.id ORDER BY p.created_at DESC`;
 
     const projects = await sql(query, params);
+    const usage = await getUserProjectUsage(session.user.id);
 
-    return Response.json({ projects });
+    return Response.json({ projects, usage });
   } catch (error) {
     console.error('Error fetching projects:', error);
     return Response.json({ error: 'Failed to fetch projects' }, { status: 500 });
@@ -59,6 +61,18 @@ export async function POST(request: Request) {
 
     if (!name) {
       return Response.json({ error: 'Name is required' }, { status: 400 });
+    }
+
+    const usage = await getUserProjectUsage(session.user.id);
+    if (!usage.canCreate) {
+      return Response.json(
+        {
+          error: projectLimitErrorMessage(usage),
+          code: 'PROJECT_LIMIT_REACHED',
+          usage,
+        },
+        { status: 403 }
+      );
     }
 
     const result = await sql`

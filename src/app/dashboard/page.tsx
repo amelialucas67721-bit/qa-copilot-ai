@@ -3,9 +3,8 @@
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
+import { NewProjectButton } from '@/components/ProjectPlanUsage';
 import {
-  Plus,
   FileText,
   TestTube2,
   Play,
@@ -118,11 +117,10 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
           <p className="text-sm text-gray-500 mt-1">Welcome back! Here&apos;s your QA overview.</p>
         </div>
-        <Link href="/dashboard/projects/new">
-          <Button className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl px-5 py-2.5 text-sm font-semibold inline-flex items-center gap-2 shadow-sm shadow-violet-200">
-            <Plus className="w-4 h-4" /> New Project
-          </Button>
-        </Link>
+        <NewProjectButton
+          usage={stats?.project_usage ?? null}
+          className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl px-5 py-2.5 text-sm font-semibold inline-flex items-center gap-2 shadow-sm shadow-violet-200"
+        />
       </div>
 
       {/* Stats Grid */}
@@ -191,11 +189,11 @@ export default function DashboardPage() {
               </div>
               <p className="text-sm font-medium text-gray-500 mb-1">No activity yet</p>
               <p className="text-xs text-gray-400 mb-6">Create a project to get started</p>
-              <Link href="/dashboard/projects/new">
-                <Button className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl px-5 py-2.5 text-sm font-semibold">
-                  Create First Project
-                </Button>
-              </Link>
+              <NewProjectButton
+                usage={stats?.project_usage ?? null}
+                label="Create First Project"
+                className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl px-5 py-2.5 text-sm font-semibold inline-flex items-center gap-2"
+              />
             </div>
           ) : (
             <div className="divide-y divide-gray-50">

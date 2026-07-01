@@ -1,6 +1,7 @@
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
 import sql from '@/app/api/utils/sql';
+import { getUserProjectUsage } from '@/lib/plan-limits';
 
 export async function GET() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -49,6 +50,8 @@ export async function GET() {
       LIMIT 10
     `;
 
+    const usage = await getUserProjectUsage(session.user.id);
+
     return Response.json({
       test_cases: testCases[0]?.count || 0,
       test_runs: testRuns[0]?.count || 0,
@@ -56,6 +59,7 @@ export async function GET() {
       projects: projects[0]?.count || 0,
       pass_rate: passRate[0]?.rate || 0,
       recent_activity: recentActivity,
+      project_usage: usage,
     });
   } catch (error) {
     console.error('Error fetching dashboard stats:', error);
