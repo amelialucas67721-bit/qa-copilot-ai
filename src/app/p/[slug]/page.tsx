@@ -1,3 +1,4 @@
+import { PageContent } from '@/components/PageContent';
 import { getSitePage } from '@/lib/site-pages';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -34,15 +35,7 @@ export default async function SitePageView({
       <main className="max-w-3xl mx-auto px-6 py-14">
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-8">{page.title}</h1>
         <div className="prose prose-invert max-w-none">
-          {page.content.trim() ? (
-            page.content.split('\n\n').map((paragraph, index) => (
-              <p key={index} className="text-white/70 leading-relaxed mb-4 last:mb-0">
-                {paragraph}
-              </p>
-            ))
-          ) : (
-            <p className="text-white/40">This page has no content yet.</p>
-          )}
+          <PageContent content={page.content} />
         </div>
       </main>
     </div>

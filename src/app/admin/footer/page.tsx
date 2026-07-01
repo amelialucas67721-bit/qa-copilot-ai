@@ -363,11 +363,15 @@ export default function FooterAdminPage() {
                           <label className="block text-xs font-medium text-gray-500 mb-1">
                             Page content
                           </label>
+                          <p className="text-xs text-gray-400 mb-2">
+                            Headings render bold. Use <code className="text-gray-600"># Heading</code>{' '}
+                            or put a title on its own line above the paragraph.
+                          </p>
                           <textarea
                             value={page?.content || ''}
                             onChange={(e) => updatePage(slug, 'content', e.target.value)}
                             rows={6}
-                            placeholder="Enter the content visitors will see on this page. Use blank lines between paragraphs."
+                            placeholder="Use blank lines between sections. Start a line with # for a bold heading, or put a heading on its own line followed by body text."
                             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white resize-y min-h-[120px]"
                           />
                         </div>
