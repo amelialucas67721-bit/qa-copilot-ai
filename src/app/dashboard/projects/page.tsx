@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { NewProjectButton, ProjectUsageBanner } from '@/components/ProjectPlanUsage';
-import { type ProjectUsage } from '@/lib/plan-limits';
+import { type ProjectUsage } from '@/lib/plan-usage';
 import { Search, FileText, TestTube2, MoreVertical } from 'lucide-react';
 
 interface Project {

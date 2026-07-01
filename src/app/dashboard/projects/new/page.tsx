@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ProjectUsageBanner } from '@/components/ProjectPlanUsage';
-import { type ProjectUsage } from '@/lib/plan-limits';
+import { type ProjectUsage } from '@/lib/plan-usage';
 import { ArrowLeft } from 'lucide-react';
 
 export default function NewProjectPage() {

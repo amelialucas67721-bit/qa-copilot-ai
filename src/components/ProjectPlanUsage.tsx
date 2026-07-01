@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import { formatProjectLimit, type ProjectUsage } from '@/lib/plan-limits';
+import { formatProjectLimit, type ProjectUsage } from '@/lib/plan-usage';
 
 type ProjectUsageBannerProps = {
   usage: ProjectUsage | null;

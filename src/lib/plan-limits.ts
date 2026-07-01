@@ -1,18 +1,15 @@
+import 'server-only';
+
 import sql from '@/app/api/utils/sql';
+import { type ProjectUsage } from '@/lib/plan-usage';
+import { isWithinLimit } from '@/lib/plan-usage-utils';
+
+export type { ProjectUsage } from '@/lib/plan-usage';
 
 export type PlanLimits = {
   test_cases: number;
   projects: number;
   team_members: number;
-};
-
-export type ProjectUsage = {
-  planName: string;
-  planSlug: string;
-  current: number;
-  limit: number;
-  unlimited: boolean;
-  canCreate: boolean;
 };
 
 const DEFAULT_FREE_LIMITS: PlanLimits = {
@@ -50,16 +47,6 @@ function parseLimits(value: unknown): PlanLimits {
         ? limits.team_members
         : DEFAULT_FREE_LIMITS.team_members,
   };
-}
-
-export function isWithinLimit(current: number, limit: number): boolean {
-  if (limit < 0) return true;
-  return current < limit;
-}
-
-export function formatProjectLimit(limit: number): string {
-  if (limit < 0) return 'Unlimited';
-  return String(limit);
 }
 
 export function projectLimitErrorMessage(usage: ProjectUsage): string {
