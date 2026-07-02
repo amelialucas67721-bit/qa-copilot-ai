@@ -1,4 +1,5 @@
 import sql from '@/app/api/utils/sql';
+import { unstable_noStore as noStore } from 'next/cache';
 import {
   DEFAULT_FOOTER_CONTENT,
   normalizeFooterContent,
@@ -9,6 +10,7 @@ export type { FooterContent, FooterColumn, FooterLink } from '@/lib/footer-conte
 export { DEFAULT_FOOTER_CONTENT } from '@/lib/footer-content';
 
 export async function getFooterContent(): Promise<FooterContent> {
+  noStore();
   try {
     const rows = await sql`
       SELECT value FROM site_settings WHERE key = 'footer' LIMIT 1

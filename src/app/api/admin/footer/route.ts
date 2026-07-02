@@ -1,4 +1,5 @@
 import { headers } from 'next/headers';
+import { revalidatePath } from 'next/cache';
 import { auth } from '@/lib/auth';
 import { getFooterContent, saveFooterContent } from '@/lib/footer';
 import {
@@ -35,5 +36,11 @@ export async function PATCH(request: Request) {
 
   const slugs = collectFooterPageSlugs(footer);
   const pages = await getSitePages(slugs);
+
+  revalidatePath('/');
+  for (const slug of slugs) {
+    revalidatePath(`/p/${slug}`);
+  }
+
   return Response.json({ footer, pages });
 }

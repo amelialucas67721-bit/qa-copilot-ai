@@ -15,6 +15,8 @@ import { getHomepageContent } from '@/lib/homepage';
 import { formatPlanPrice, getPublicPricingPlans, planCta } from '@/lib/pricing';
 import HowItWorksButton from '@/components/HowItWorksButton';
 
+export const dynamic = 'force-dynamic';
+
 const FEATURE_STYLES = [
   { icon: FileCheck, color: 'text-violet-400', bg: 'bg-violet-500/10', border: 'border-violet-500/20' },
   { icon: Zap, color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20' },
@@ -273,20 +275,25 @@ export default async function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-white/5">
         <div className="max-w-7xl mx-auto px-6 py-14">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-12">
-            {footer.columns.map((col) => (
-              <div key={col.title}>
+          <div
+            className="grid gap-10 mb-12"
+            style={{
+              gridTemplateColumns: 'repeat(auto-fit, minmax(10rem, 1fr))',
+            }}
+          >
+            {footer.columns.map((col, colIndex) => (
+              <div key={`${col.title}-${colIndex}`}>
                 <h4 className="text-xs font-bold text-white/30 uppercase tracking-widest mb-5">
                   {col.title}
                 </h4>
                 <ul className="space-y-3">
-                  {col.links.map((link) => {
+                  {col.links.map((link, linkIndex) => {
                     const href =
                       link.pageSlug && (!link.href || link.href === '#')
                         ? `/p/${link.pageSlug}`
                         : link.href || '#';
                     return (
-                    <li key={`${col.title}-${link.label}`}>
+                    <li key={`${colIndex}-${linkIndex}-${link.label}`}>
                       <Link
                         href={href}
                         className="text-sm text-white/50 hover:text-white transition-colors"

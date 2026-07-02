@@ -1,4 +1,5 @@
 import sql from '@/app/api/utils/sql';
+import { unstable_noStore as noStore } from 'next/cache';
 import {
   DEFAULT_SITE_PAGES,
   normalizeSitePage,
@@ -10,6 +11,7 @@ export type { SitePage, SitePageInput } from '@/lib/site-pages-content';
 export { slugifyLabel, pageHref, DEFAULT_SITE_PAGES } from '@/lib/site-pages-content';
 
 export async function getSitePage(slug: string): Promise<SitePage | null> {
+  noStore();
   if (!slug) return null;
   try {
     const rows = await sql`

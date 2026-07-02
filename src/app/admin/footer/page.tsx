@@ -163,6 +163,12 @@ export default function FooterAdminPage() {
   };
 
   const handleSave = async () => {
+    const columnsWithoutTitle = footer.columns.filter((col) => !col.title.trim());
+    if (columnsWithoutTitle.length > 0) {
+      showToast('error', 'Each column needs a title before saving.');
+      return;
+    }
+
     setSaving(true);
     try {
       const res = await fetch('/api/admin/footer', {
@@ -254,7 +260,7 @@ export default function FooterAdminPage() {
         </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-4 pb-24">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Columns</h2>
           <Button type="button" variant="outline" size="sm" onClick={addColumn}>
@@ -407,6 +413,28 @@ export default function FooterAdminPage() {
             </Button>
           </div>
         ))}
+      </div>
+
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white/95 backdrop-blur px-6 py-4 md:left-60">
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
+          <p className="text-sm text-gray-500">
+            Click <span className="font-medium text-gray-700">Save Changes</span> after editing column
+            titles, links, or page content.
+          </p>
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="bg-rose-600 hover:bg-rose-500 text-white shrink-0"
+          >
+            {saving ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving…
+              </>
+            ) : (
+              'Save Changes'
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );
